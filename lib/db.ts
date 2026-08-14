@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import fs from "fs";
 import path from "path";
 import { getSingaporeNow } from "./timezone";
 
@@ -11,9 +12,16 @@ import { getSingaporeNow } from "./timezone";
 // On Railway, RAILWAY_VOLUME_MOUNT_PATH points at the attached persistent
 // volume — without it, the db would live on the container's ephemeral
 // filesystem and reset on every deploy/restart.
-const dbPath =
-  process.env.TEST_DB_PATH ??
-  path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH ?? process.cwd(), "todos.db");
+const dbDir = process.env.TEST_DB_PATH
+  ? null
+  : (process.env.RAILWAY_VOLUME_MOUNT_PATH ?? process.cwd());
+// The volume is only mounted at deploy/runtime, not during the build step —
+// but `next build` still imports this module (to collect API route page
+// data), so the directory may not exist yet. Create it defensively rather
+// than crashing the build; at runtime this is a harmless no-op since the
+// mounted volume directory already exists.
+if (dbDir) fs.mkdirSync(dbDir, { recursive: true });
+const dbPath = process.env.TEST_DB_PATH ?? path.join(dbDir!, "todos.db");
 export const db: Database.Database = new Database(dbPath);
 db.pragma("journal_mode = WAL");
 // Next's build-time page-data collection loads this module from many
