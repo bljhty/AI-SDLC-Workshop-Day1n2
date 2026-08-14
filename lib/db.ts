@@ -7,9 +7,13 @@ import { getSingaporeNow } from "./timezone";
 // ---------------------------------------------------------------------------
 
 // Overridable for unit tests (see tests/unit/setup.ts) so `vitest run` never
-// opens/locks the real dev/E2E database file. Unset in every other context,
-// so app and E2E behavior is unchanged.
-const dbPath = process.env.TEST_DB_PATH ?? path.join(process.cwd(), "todos.db");
+// opens/locks the real dev/E2E database file. Unset in every other context.
+// On Railway, RAILWAY_VOLUME_MOUNT_PATH points at the attached persistent
+// volume — without it, the db would live on the container's ephemeral
+// filesystem and reset on every deploy/restart.
+const dbPath =
+  process.env.TEST_DB_PATH ??
+  path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH ?? process.cwd(), "todos.db");
 export const db: Database.Database = new Database(dbPath);
 db.pragma("journal_mode = WAL");
 // Next's build-time page-data collection loads this module from many
